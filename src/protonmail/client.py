@@ -22,7 +22,9 @@ from typing import Optional, Coroutine, Union
 import bcrypt
 
 import unicodedata
-from requests import Session
+#from requests import Session
+from curl_cffi import Session
+from 
 from requests.models import Response
 from aiohttp import ClientSession, TCPConnector
 from requests_toolbelt import MultipartEncoder
@@ -60,7 +62,7 @@ class ProtonMail:
         self._session_auto_save = False
         self.account_addresses: list[AccountAddress] = []
 
-        self.session = Session()
+        self.session = Session(impersonate='chrome')
         self.session.proxies = {'http': self.proxy, 'https': self.proxy} if self.proxy else dict()
         self.session.headers.update(DEFAULT_HEADERS)
 
