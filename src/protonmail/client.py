@@ -22,8 +22,7 @@ from typing import Optional, Coroutine, Union
 import bcrypt
 
 import unicodedata
-from requests import Session
-from requests.models import Response
+from curl_cffi import Session
 from aiohttp import ClientSession, TCPConnector
 from requests_toolbelt import MultipartEncoder
 from tqdm.asyncio import tqdm_asyncio
@@ -60,8 +59,11 @@ class ProtonMail:
         self._session_auto_save = False
         self.account_addresses: list[AccountAddress] = []
 
-        self.session = Session()
-        self.session.proxies = {'http': self.proxy, 'https': self.proxy} if self.proxy else dict()
+        self.session = Session(impersonate='chrome136')
+        if self.proxy:
+            self.session.proxies = {'http': self.proxy, 'https': self.proxy}
+        else:
+            self.session.proxies = dict()
         self.session.headers.update(DEFAULT_HEADERS)
 
     def login(self, username: str, password: str, getter_2fa_code: callable = lambda: input("enter 2FA code:"), login_type: LoginType = LoginType.WEB,
@@ -1530,20 +1532,19 @@ class ProtonMail:
         attachment.is_decrypted = True
         attachment.size = len(content)
 
-    def _get(self, base: str, endpoint: str, **kwargs) -> Response:
-        return self.__request('get', base, endpoint, **kwargs)
+    def _get(self, base: str, endpoint: str, **kwargs):
+        return self.__request('GET', base, endpoint, **kwargs)
 
-    def _post(self, base: str, endpoint: str, **kwargs) -> Response:
-        return self.__request('post', base, endpoint, **kwargs)
+    def _post(self, base: str, endpoint: str, **kwargs):
+        return self.__request('POST', base, endpoint, **kwargs)
 
-    def _put(self, base: str, endpoint: str, **kwargs) -> Response:
-        return self.__request('put', base, endpoint, **kwargs)
+    def _put(self, base: str, endpoint: str, **kwargs):
+        return self.__request('PUT', base, endpoint, **kwargs)
 
-    def _delete(self, base: str, endpoint: str, **kwargs) -> Response:
-        return self.__request('delete', base, endpoint, **kwargs)
+    def _delete(self, base: str, endpoint: str, **kwargs):
+        return self.__request('DELETE', base, endpoint, **kwargs)
 
-    @delete_duplicates_cookies_and_reset_domain
-    def __request(self, method: str, base: str, endpoint: str, **kwargs) -> Response:
+    def __request(self, method: str, base: str, endpoint: str, **kwargs):
         methods = {
             'get': self.session.get,
             'post': self.session.post,
