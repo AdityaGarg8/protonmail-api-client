@@ -2,7 +2,6 @@
 from dataclasses import dataclass, field, asdict
 from enum import Enum
 from typing import Optional, Callable
-from uuid import uuid4
 
 
 class LoginType(Enum):
@@ -140,71 +139,6 @@ class AccountAddress:
         """
         return asdict(self)
 
-
-@dataclass
-class Attachment:
-    """Attachment."""
-    id: str = ''
-    name: str = ''
-    size: int = 0
-    type: str = ''
-    content: bytes = b''
-    is_decrypted: bool = False
-    is_inserted: bool = False
-    key_packets: str = ''
-    cid: str = ''
-    extra: dict = field(default_factory=dict)
-
-    def __str__(self):
-        ellipsis_str = '...' if len(self.name) > 20 else ','
-        cropped_name = self.name[:20]
-        return f"<Attachment [{cropped_name}{ellipsis_str} {self.size} bytes]>"
-
-    def to_dict(self) -> dict[str, any]:
-        """
-        Object to dict
-
-        :returns: :py:obj:`dict`
-        """
-        return asdict(self)
-
-    def get_embedded_attrs(self) -> str:
-        """
-        Get embedded attributes for insert image into HTML.
-        For example: <img {img_attachment.get_embedded_attrs()} height="150" width="300">
-        """
-        if not self.cid:
-            self.cid = str(uuid4()).split('-', maxsplit=1)[0] + '@proton.me'
-        embedded_attrs = f'src="cid:{self.cid}" alt="{self.name}" class="proton-embedded"'
-        self.is_inserted = True
-        return embedded_attrs
-
-
-@dataclass
-class Label:
-    """Label."""
-    id: str
-    name: str
-    path: Optional[str]
-    type: int
-    type_name: str
-    color: str
-    notify: bool
-    display: bool
-    parent_id: Optional[str] = None
-
-    def __str__(self):
-        return f"<Label [{self.id}, name: {self.name}, type: {self.type}]>"
-
-    def to_dict(self) -> dict[str, any]:
-        """
-        Object to dict
-
-        :returns: :py:obj:`dict`
-        """
-        return asdict(self)
-
-
 @dataclass
 class Message:
     """Message."""
@@ -220,8 +154,6 @@ class Message:
     size: int = 0
     body: str = ''
     type: str = ''
-    labels: list[str, Label] = field(default_factory=list)
-    attachments: list[Attachment] = field(default_factory=list)
     external_id: str = ''
     in_reply_to: str = ''
     plain_transfer_encoding: str = field(default='quoted-printable')
@@ -231,51 +163,6 @@ class Message:
         ellipsis_str = '...' if len(self.subject) > 20 else ','
         cropped_subject = self.subject[:20]
         return f"<Message [{cropped_subject}{ellipsis_str} id: {self.id[:10]}...]>"
-
-    def to_dict(self) -> dict[str, any]:
-        """
-        Object to dict
-
-        :returns: :py:obj:`dict`
-        """
-        return asdict(self)
-
-    def is_draft(self) -> bool:
-        """This message is draft or not"""
-        labels_ids = set(label.id if isinstance(label, Label) else label for label in self.labels)
-        if {'1', '8'} & labels_ids:
-            return True
-        return False
-
-    def convert_labels(self, labels: list[Label]):
-        """
-        Replace label_id with label obj. If there is no corresponding label, the label_id will remain.
-
-        :param labels: list of labels
-        """
-        labels_mapper = {label.id: label for label in labels}
-        self.labels = [labels_mapper[label_id] if label_id in labels_mapper else label_id for label_id in self.labels]
-
-
-
-@dataclass
-class Conversation:
-    """Conversation."""
-    id: str = ''
-    subject: str = ''
-    senders: list[UserMail] = field(default_factory=list)
-    recipients: list[UserMail] = field(default_factory=list)
-    num_messages: int = 0
-    num_unread: int = 0
-    size: int = 0
-    time: int = 0
-    labels: list[str] = field(default_factory=list)
-    extra: dict = field(default_factory=dict)
-
-    def __str__(self):
-        ellipsis_str = '...' if len(self.subject) > 20 else ','
-        cropped_subject = self.subject[:20]
-        return f"<Conversation [{cropped_subject}{ellipsis_str} id: {self.id[:10]}...]>"
 
     def to_dict(self) -> dict[str, any]:
         """

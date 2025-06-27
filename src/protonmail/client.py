@@ -463,7 +463,6 @@ class ProtonMail:
             size=response['Size'],
             body=response.get('Body', ''),
             type=response.get('MIMEType', ''),
-            labels=response['LabelIDs'],
             extra=response,
         )
         return message
