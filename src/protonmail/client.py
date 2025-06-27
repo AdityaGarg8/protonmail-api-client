@@ -1,37 +1,27 @@
 """Client for api protonmail."""
 
-import asyncio
 import json
-import mimetypes
 import pickle
 import quopri
 import re
 import string
-import time
 from copy import deepcopy
 from datetime import datetime
-from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from email.mime.base import MIMEBase
 from email.parser import Parser
 from base64 import b64encode, b64decode
 import random
-from math import ceil
-from threading import Thread
-from typing import Optional, Coroutine, Union
+from typing import Optional, Union
 
 import bcrypt
 
 import unicodedata
 from requests import Session
 from requests.models import Response
-from aiohttp import ClientSession, TCPConnector
 from requests_toolbelt import MultipartEncoder
-from tqdm.asyncio import tqdm_asyncio
 
-from .exceptions import SendMessageError, InvalidTwoFactorCode, LoadSessionError, AddressNotFound, CantUploadAttachment, CantSetLabel, CantUnsetLabel, CantGetLabels, \
-    CantSolveImageCaptcha, InvalidCaptcha
-from .models import Attachment, Message, UserMail, Conversation, PgpPairKeys, Label, AccountAddress, LoginType, CaptchaConfig
+from .exceptions import SendMessageError, InvalidTwoFactorCode, LoadSessionError, AddressNotFound, CantSolveImageCaptcha, InvalidCaptcha
+from .models import Message, UserMail, PgpPairKeys, AccountAddress, LoginType, CaptchaConfig
 from .constants import DEFAULT_HEADERS, urls_api, PM_APP_VERSION_MAIL, PM_APP_VERSION_DEV, PM_APP_VERSION_ACCOUNT
 from .utils.pysrp import User
 from .logger import Logger
