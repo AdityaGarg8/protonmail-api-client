@@ -150,14 +150,12 @@ class ProtonMail:
 
         self._parse_info_after_login(password, user_private_key_password)
 
-    def send_message(self, message: Message, is_html: bool = True, delivery_time: Optional[int] = None, account_address: Optional[AccountAddress] = None) -> Message:
+    def send_message(self, message: Message, delivery_time: Optional[int] = None, account_address: Optional[AccountAddress] = None) -> Message:
         """
         Send the message.
 
         :param message: The message you want to send.
         :type message: ``Message``
-        :param is_html: message.body is html or plain text, default: True
-        :type is_html: ``bool``
         :param delivery_time: timestamp (seconds) for scheduled delivery message, default: None (send now)
         :type delivery_time: ``int``
         :param account_address: If you have more than 1 address for 1 account (premium only), you can choose which address to send messages from,
@@ -189,8 +187,8 @@ class ProtonMail:
                 'type': 1 if bcc_info['RecipientType'] == 1 else 32,
                 'public_key': bcc_info['Keys'][0]['PublicKey'] if bcc_info['Keys'] else None,
             })
-        draft = self.create_draft(message, is_html, decrypt_body=False, account_address=account_address)
-        multipart = self._multipart_encrypt(message, recipients_info, is_html, delivery_time)
+        draft = self.create_draft(message, decrypt_body=False, account_address=account_address)
+        multipart = self._multipart_encrypt(message, recipients_info, delivery_time)
 
         headers = {
             "Content-Type": multipart.content_type
@@ -215,7 +213,7 @@ class ProtonMail:
 
         return sent_message
 
-    def create_draft(self, message: Message, is_html: bool = True, decrypt_body: Optional[bool] = True, account_address: Optional[AccountAddress] = None) -> Message:
+    def create_draft(self, message: Message, decrypt_body: Optional[bool] = True, account_address: Optional[AccountAddress] = None) -> Message:
         """Create the draft."""
         if not account_address:
             account_address = self.account_addresses[0]
@@ -252,7 +250,7 @@ class ProtonMail:
                 'CCList': [],
                 'BCCList': [],
                 'Subject': message.subject,
-                'MIMEType': 'text/html' if is_html else 'text/plain',
+                'MIMEType': 'text/plain',
                 'RightToLeft': 0,
                 'Sender': {
                     'Name': account_address.name,
@@ -481,47 +479,23 @@ class ProtonMail:
         return message
 
     @staticmethod
-    def _prepare_message(message: Message, is_html: bool = True) -> str:
+    def _prepare_message(message: Message) -> str:
         """Converting an unencrypted message into a multipart mime."""
         data = message.body
-        msg_mixed = MIMEMultipart('mixed')
         msg_plain = MIMEText('', _subtype='plain')
 
-        if not is_html:
-            if message.plain_transfer_encoding == '8bit':
-                msg_plain.replace_header('Content-Transfer-Encoding', '8bit')
-            elif message.plain_transfer_encoding == 'base64':
-                msg_plain.replace_header('Content-Transfer-Encoding', 'base64')
-                data = b64encode(data.encode()).decode()
-                data = '\n'.join([data[i:i + 76] for i in range(0, len(data), 76)])
-            else: # default is 'quoted-printable'
-                msg_plain.replace_header('Content-Transfer-Encoding', 'quoted-printable')
-                data = quopri.encodestring(data.encode('utf-8')).decode('utf-8')
+        if message.plain_transfer_encoding == '8bit':
+            msg_plain.replace_header('Content-Transfer-Encoding', '8bit')
+        elif message.plain_transfer_encoding == 'base64':
+            msg_plain.replace_header('Content-Transfer-Encoding', 'base64')
+            data = b64encode(data.encode()).decode()
+            data = '\n'.join([data[i:i + 76] for i in range(0, len(data), 76)])
+        else: # default is 'quoted-printable'
+            msg_plain.replace_header('Content-Transfer-Encoding', 'quoted-printable')
+            data = quopri.encodestring(data.encode('utf-8')).decode('utf-8')
 
-            msg_plain.set_payload(data, 'utf-8')
-            msg_mixed.attach(msg_plain)
-
-        else:
-            msg_plain.set_payload('', 'utf-8')
-            data_base64 = b64encode(data.encode()).decode()
-            data_base64 = '\n'.join([data_base64[i:i+76] for i in range(0, len(data_base64), 76)])
-
-            msg_base = MIMEText('', _subtype='html')
-            msg_base.replace_header('Content-Transfer-Encoding', 'base64')
-            msg_base.set_payload(data_base64, 'utf-8')
-
-            msg_related = MIMEMultipart('related')
-            msg_related.attach(msg_base)
-
-            msg_alt = MIMEMultipart('alternative')
-            msg_alt.attach(msg_plain)
-            msg_alt.attach(msg_related)
-
-            msg_mixed.attach(msg_alt)
-
-        message = msg_mixed.as_string().replace('MIME-Version: 1.0\n', '')
-
-        return message
+        msg_plain.set_payload(data, 'utf-8')
+        return msg_plain.as_string().replace('MIME-Version: 1.0\n', '')
 
     def _crate_anonym_session(self) -> dict:
         """Create anonymous session."""
@@ -728,11 +702,11 @@ class ProtonMail:
             raise AddressNotFound(address, json_response['Error'])
         return json_response
 
-    def _multipart_encrypt(self, message: Message, recipients_info: list[dict], is_html: bool, delivery_time: Optional[int] = None) -> MultipartEncoder:
+    def _multipart_encrypt(self, message: Message, recipients_info: list[dict], delivery_time: Optional[int] = None) -> MultipartEncoder:
         session_key = None
         recipients_type = set(recipient['type'] for recipient in recipients_info)
         package_types = {
-            1: 'text/html' if is_html else 'text/plain',  # send to proton
+            1: 'text/plain',  # send to proton
             32: 'multipart/mixed',  # send to other mails
         }
         fields = {
@@ -747,7 +721,7 @@ class ProtonMail:
             if is_send_to_proton:
                 prepared_body = message.body
             else:
-                prepared_body = self._prepare_message(message, is_html)
+                prepared_body = self._prepare_message(message)
 
             body_message, session_key, signature = self.pgp.encrypt_with_session_key(prepared_body, session_key)
 
@@ -791,24 +765,19 @@ class ProtonMail:
         multipart = parser.parsestr(message.body)
         if not multipart.is_multipart():
             return
-        text = html = None
+        text = None
         for block in multipart.walk():
             answers = self.__multipart_decrypt_block(block)
             if answers[0] == 'text':
                 text = answers[1]
-            elif answers[0] == 'html':
-                html = answers[1]
-        message.body = html or text
+        message.body = text
 
     def __multipart_decrypt_block(self, block: any) -> tuple[str, any]:
-        content_type = block.get_content_type()
         transfer = block.get('Content-Transfer-Encoding')
         payload = block.get_payload(decode=True)
 
         if transfer == 'quoted-printable':
             return 'text', unicodedata.normalize('NFKD', payload.decode())
-        if content_type == 'text/html':
-            return 'html', payload.decode()
         return 'none', 'none'
 
     def _get(self, base: str, endpoint: str, **kwargs) -> Response:
