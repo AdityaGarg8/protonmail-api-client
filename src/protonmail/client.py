@@ -427,15 +427,6 @@ class ProtonMail:
         return Message(**kwargs)
 
     @staticmethod
-    def _flattening_lists(list_of_lists: list[list[any]]) -> list[any]:
-        flattened_list = [
-            item
-            for items_list in list_of_lists
-            for item in items_list
-        ]
-        return flattened_list
-
-    @staticmethod
     def _convert_dict_to_message(response: dict) -> Message:
         """
         Converts dictionary to message object.
@@ -736,25 +727,6 @@ class ProtonMail:
         if json_response['Code'] == 33102:
             raise AddressNotFound(address, json_response['Error'])
         return json_response
-
-    def _async_helper(self, func: callable, args_list: list[tuple]) -> list[any]:
-        results = asyncio.run(
-            self.__async_process(func, args_list)
-        )
-        return results
-
-    async def __async_process(
-            self,
-            func: callable,
-            args_list: list[tuple[any]]
-    ) -> list[Coroutine]:
-        connector = TCPConnector(limit=100)
-        headers = dict(self.session.headers)
-        cookies = self.session.cookies.get_dict()
-
-        async with ClientSession(headers=headers, cookies=cookies, connector=connector) as client:
-            funcs = (func(client, *args) for args in args_list)
-            return await tqdm_asyncio.gather(*funcs, desc=func.__name__)
 
     def _multipart_encrypt(self, message: Message, recipients_info: list[dict], is_html: bool, delivery_time: Optional[int] = None) -> MultipartEncoder:
         session_key = None
