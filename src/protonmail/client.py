@@ -830,7 +830,6 @@ class ProtonMail:
 
     def __multipart_decrypt_block(self, block: any) -> tuple[str, any]:
         content_type = block.get_content_type()
-        disposition = block.get_content_disposition()
         transfer = block.get('Content-Transfer-Encoding')
         payload = block.get_payload(decode=True)
 
@@ -846,19 +845,11 @@ class ProtonMail:
     def _post(self, base: str, endpoint: str, **kwargs) -> Response:
         return self.__request('post', base, endpoint, **kwargs)
 
-    def _put(self, base: str, endpoint: str, **kwargs) -> Response:
-        return self.__request('put', base, endpoint, **kwargs)
-
-    def _delete(self, base: str, endpoint: str, **kwargs) -> Response:
-        return self.__request('delete', base, endpoint, **kwargs)
-
     @delete_duplicates_cookies_and_reset_domain
     def __request(self, method: str, base: str, endpoint: str, **kwargs) -> Response:
         methods = {
             'get': self.session.get,
-            'post': self.session.post,
-            'put': self.session.put,
-            'delete': self.session.delete
+            'post': self.session.post
         }
         response = methods[method](f'{urls_api[base]}/{endpoint}', **kwargs)
         if response.status_code == 401:  # access token is expired
