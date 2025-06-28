@@ -113,7 +113,7 @@ class ProtonMail:
 
         if auth["TwoFactor"]:
             if not auth["2FA"]["TOTP"]:
-                raise NotImplementedError("Two-Factor Authentication(2FA) implemented only TOTP, disable FIDO2/U2F")
+                raise NotImplementedError("Only TOTP is supported as Two-Factor Authentication(2FA) method. Disable FIDO2/U2F.")
             domain = 'account' if login_type == LoginType.WEB else 'mail'
             response_2fa = self._post(domain, 'core/v4/auth/2fa', json={'TwoFactorCode': getter_2fa_code()})
             if response_2fa.status_code != 200:
@@ -154,7 +154,7 @@ class ProtonMail:
         :returns: :py:obj:`Message`
         """
         if delivery_time and delivery_time <= datetime.now().timestamp():
-            raise ValueError(f"Delivery time ({delivery_time}) is less than current, you can't send message to the past")
+            raise ValueError(f"Delivery time ({delivery_time}) is less than current time. You can't send message to the past!")
         recipients_info = []
         for recipient in message.recipients:
             recipient_info = self.__check_email_address(recipient)
